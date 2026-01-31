@@ -1,11 +1,10 @@
 import streamlit as st
 import requests
-from PIL import Image
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(
-    page_title="Iris Classifier",
-    page_icon="🌸",
+    page_title="Diabetes Predictor",
+    page_icon="🩺",
     layout="centered",
     initial_sidebar_state="expanded"
 )
@@ -26,96 +25,151 @@ st.markdown("""
         border-color: #FF2E2E;
     }
     div[data-testid="stMetric"] {
-        background-color: #f0f2f6;
-        padding: 10px;
-        border-radius: 10px;
-        text-align: center;
-    }
+    background-color: #262730;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+}
     </style>
 """, unsafe_allow_html=True)
 
-# 3. SIDEBAR CONFIGURATION
+# 3. HELPER FUNCTION TO NORMALIZE VALUES
+# These normalization values are approximate based on the sklearn diabetes dataset
+def normalize(value, mean, std):
+    return (value - mean) / std
+
+# Approximate means and stds from the original diabetes dataset
+NORMALIZATION = {
+    'age': {'mean': 48.5, 'std': 13.1},      # years
+    'bmi': {'mean': 26.4, 'std': 4.4},       # kg/m²
+    'bp': {'mean': 94.6, 'std': 13.8},       # mm Hg
+    's1': {'mean': 189.1, 'std': 34.6},      # tc (total cholesterol)
+    's2': {'mean': 115.4, 'std': 30.4},      # ldl
+    's3': {'mean': 49.8, 'std': 12.9},       # hdl
+    's4': {'mean': 4.1, 'std': 1.3},         # tch (thyroid)
+    's5': {'mean': 4.6, 'std': 0.5},         # ltg (log of triglycerides)
+    's6': {'mean': 91.3, 'std': 11.5},       # glu (glucose)
+}
+
+# 4. SIDEBAR CONFIGURATION
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Iris_versicolor_3.jpg/1200px-Iris_versicolor_3.jpg", caption="Iris Versicolor")
-    st.title("🌸 About the App")
+    st.title("🩺 About the App")
     st.info(
         """
-        This machine learning app predicts the **species** of an Iris flower based on its measurements.
+        This machine learning app predicts **diabetes disease progression** based on patient measurements.
         
-        The model uses the classic Iris dataset to distinguish between:
-        - **Setosa**
-        - **Versicolor**
-        - **Virginica**
+        **Input Variables:**
+        - Age, Sex, BMI, Blood Pressure
+        - Blood tests: Cholesterol, LDL, HDL, etc.
+        
+        **Output:** A score (25-350) indicating disease progression one year after baseline.
+        - **Low (<100):** Minimal progression
+        - **Medium (100-200):** Moderate progression  
+        - **High (>200):** Significant progression
         """
     )
     st.write("---")
     st.caption("Built with Streamlit & Cloud Run")
 
-# 4. MAIN APP INTERFACE
-st.title("🌿 Iris Species Predictor")
-st.markdown("Adjust the sliders below to input the flower measurements.")
+# 5. MAIN APP INTERFACE
+st.title("🩺 Diabetes Progression Predictor")
+st.markdown("Enter patient information below to predict disease progression.")
 
-# Create a 2x2 grid for inputs using columns
+# Create a grid for inputs
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Sepal Dimensions")
-    sepal_length = st.slider('Sepal Length (cm)', 0.0, 10.0, 5.1)
-    sepal_width = st.slider('Sepal Width (cm)', 0.0, 10.0, 3.5)
-
+    st.subheader("Basic Info")
+    age = st.number_input('Age (years)', min_value=18, max_value=90, value=50)
+    sex_choice = st.selectbox('Sex', ['Female', 'Male'])
+    bmi = st.number_input('BMI (kg/m²)', min_value=15.0, max_value=50.0, value=26.0, step=0.1)
+    bp = st.number_input('Blood Pressure (mm Hg)', min_value=60, max_value=160, value=95)
+    
 with col2:
-    st.subheader("Petal Dimensions")
-    petal_length = st.slider('Petal Length (cm)', 0.0, 10.0, 1.4)
-    petal_width = st.slider('Petal Width (cm)', 0.0, 10.0, 0.2)
+    st.subheader("Blood Tests")
+    s1 = st.number_input('Total Cholesterol (mg/dL)', min_value=100, max_value=300, value=190)
+    s2 = st.number_input('LDL Cholesterol (mg/dL)', min_value=50, max_value=250, value=115)
+    s3 = st.number_input('HDL Cholesterol (mg/dL)', min_value=20, max_value=100, value=50)
+    s4 = st.number_input('Cholesterol/HDL Ratio', min_value=1.0, max_value=10.0, value=4.0, step=0.1)
+    s5 = st.number_input('Log Triglycerides', min_value=3.0, max_value=6.5, value=4.6, step=0.1)
+    s6 = st.number_input('Blood Sugar (mg/dL)', min_value=60, max_value=150, value=91)
 
 st.write("---")
 
-# 5. PREDICTION LOGIC
-if st.button('🔍 Predict Species'):
+# 6. PREDICTION LOGIC
+if st.button('🔍 Predict Progression'):
     
-    # Visual loading spinner
-    with st.spinner('Analyzing flower data...'):
+    with st.spinner('Analyzing patient data...'):
+        
+        # Normalize all values
+        age_norm = normalize(age, **NORMALIZATION['age'])
+        sex_norm = -0.044 if sex_choice == 'Female' else 0.050
+        bmi_norm = normalize(bmi, **NORMALIZATION['bmi'])
+        bp_norm = normalize(bp, **NORMALIZATION['bp'])
+        s1_norm = normalize(s1, **NORMALIZATION['s1'])
+        s2_norm = normalize(s2, **NORMALIZATION['s2'])
+        s3_norm = normalize(s3, **NORMALIZATION['s3'])
+        s4_norm = normalize(s4, **NORMALIZATION['s4'])
+        s5_norm = normalize(s5, **NORMALIZATION['s5'])
+        s6_norm = normalize(s6, **NORMALIZATION['s6'])
+        
         data = {
-            'sepal_length': sepal_length,
-            'sepal_width': sepal_width,
-            'petal_length': petal_length,
-            'petal_width': petal_width
+            'age': age_norm,
+            'sex': sex_norm,
+            'bmi': bmi_norm,
+            'bp': bp_norm,
+            's1': s1_norm,
+            's2': s2_norm,
+            's3': s3_norm,
+            's4': s4_norm,
+            's5': s5_norm,
+            's6': s6_norm
         }
         
         try:
-            # API Call
-            response = requests.post('https://iris-app-1091239832875.us-east1.run.app/predict', json=data)
+            response = requests.post('https://diabetes-app-867291392291.us-east1.run.app/predict', json=data)
             
             if response.status_code == 200:
                 prediction = response.json()['prediction']
                 
-                # Dynamic Result Display
                 st.success("Prediction Complete!")
                 
-                # Layout for result
-                res_col1, res_col2 = st.columns([1, 2])
+                # Display result with large metric
+                col_result1, col_result2, col_result3 = st.columns([1, 2, 1])
+                with col_result2:
+                    st.metric(label="Disease Progression Score", value=f"{prediction}")
                 
-                # Image mapping for results
-                images = {
-                    "Iris-setosa": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Kosaciec_szczecinkowaty_Iris_setosa.jpg/640px-Kosaciec_szczecinkowaty_Iris_setosa.jpg",
-                    "Iris-versicolor": "https://upload.wikimedia.org/wikipedia/commons/2/27/Blue_Flag%2C_Ottawa.jpg",
-                    "Iris-virginica": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Iris_virginica_2.jpg/1200px-Iris_virginica_2.jpg"
-                }
+                # Interpretation with progress bar
+                st.write("")
+                progress_value = min(prediction / 350, 1.0)  # Normalize to 0-1
+                st.progress(progress_value)
                 
-                # Determine image to show (default to generic if name mismatch)
-                img_url = images.get(prediction, "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Iris_versicolor_3.jpg/1200px-Iris_versicolor_3.jpg")
-
-                with res_col1:
-                    st.image(img_url, use_column_width=True)
+                # Interpretation message
+                if prediction < 100:
+                    st.success("📉 **Low Risk** - Below average disease progression expected")
+                elif prediction < 200:
+                    st.warning("📊 **Moderate Risk** - Average disease progression expected")
+                else:
+                    st.error("📈 **High Risk** - Above average disease progression expected")
                 
-                with res_col2:
-                    st.header(f"It's an **{prediction}**!")
-                    st.markdown(f"""
-                    Based on the dimensions provided:
-                    * **Sepal:** {sepal_length} x {sepal_width} cm
-                    * **Petal:** {petal_length} x {petal_width} cm
+                # Show input summary
+                with st.expander("View Input Summary"):
+                    st.write(f"""
+                    **Patient Profile:**
+                    - Age: {age} years
+                    - Sex: {sex_choice}
+                    - BMI: {bmi} kg/m²
+                    - Blood Pressure: {bp} mm Hg
+                    
+                    **Blood Tests:**
+                    - Total Cholesterol: {s1} mg/dL
+                    - LDL: {s2} mg/dL
+                    - HDL: {s3} mg/dL
+                    - Cholesterol/HDL Ratio: {s4}
+                    - Log Triglycerides: {s5}
+                    - Blood Sugar: {s6} mg/dL
                     """)
-                    st.balloons()
+                
             
             else:
                 st.error(f'Server Error: {response.status_code}')
