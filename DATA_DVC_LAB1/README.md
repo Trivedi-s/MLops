@@ -1,13 +1,13 @@
 # DATA_DVC_LAB1 — Data Versioning with DVC & Google Cloud Storage
 
-This lab demonstrates data versioning using [DVC](https://dvc.org/) with Google Cloud Storage (GCS) as the remote backend.
+This lab demonstrates data versioning using [DVC](https://dvc.org/) with Google Cloud Storage (GCS) as the remote backend. Two datasets are tracked: a credit card dataset and the Titanic passenger dataset.
 
 ---
 
 ## Prerequisites
 - Python 3.x with `pip`
 - A Google Cloud account with billing enabled
-- A [Kaggle](https://www.kaggle.com) account to download the dataset
+- A [Kaggle](https://www.kaggle.com) account to download the datasets
 
 ---
 
@@ -50,9 +50,9 @@ dvc init -f
 1. Go to **IAM & Admin → Service Accounts → Create Service Account**
 2. Name it `lab2`, set role to **Owner**, click **Done**
 3. Click on the service account → **Keys** tab → **Add Key → Create new key → JSON**
-4. Save the downloaded JSON file in the `DATA_DVC_LAB1/` folder as `dvc-lab1-key.json`
+4. Save the downloaded JSON file in the `DATA_DVC_LAB1/` folder as `lab2-key.json`
 
-> ⚠️ The `dvc-lab1-key.json` file is listed in `.gitignore` and will **not** be pushed to GitHub.
+> ⚠️ The `lab2-key.json` file is listed in `.gitignore` and will **not** be pushed to GitHub.
 
 ---
 
@@ -87,12 +87,11 @@ Expected output:
 
 ---
 
-## 4. Data Versioning & Reverting
+## 4. Dataset 1 — Credit Card Data (CC_GENERAL.csv)
 
-### 4.1 Download the Dataset
 Download the dataset from [Kaggle](https://www.kaggle.com/datasets/arjunbhasin2013/ccdata), place it in the `data/` folder and rename it to `CC_GENERAL.csv`.
 
-### 4.2 Track & Push V1
+### Track & Push V1
 ```bash
 dvc add data/CC_GENERAL.csv
 git add data/CC_GENERAL.csv.dvc data/.gitignore
@@ -101,38 +100,79 @@ git push origin main
 dvc push
 ```
 
-### 4.3 Simulate a Data Change & Push V2
+### Simulate a Data Change & Push V2
 ```bash
 echo "test,test,test" >> data/CC_GENERAL.csv
 dvc add data/CC_GENERAL.csv
 git add data/CC_GENERAL.csv.dvc
-git commit -m "Updated dataset v2"
+git commit -m "Updated CC_GENERAL dataset v2"
 git push origin main
 dvc push
 ```
 
-### 4.4 Revert to V1
-Get the commit hash for V1:
+### Revert to V1
 ```bash
-git log --oneline
-```
-
-Checkout the V1 `.dvc` file and restore the data:
-```bash
-git checkout <v1-commit-hash> -- data/CC_GENERAL.csv.dvc
+git log --oneline  # find the V1 commit hash
+git checkout a6cfdab -- data/CC_GENERAL.csv.dvc
 dvc checkout
-```
-
-Verify the revert (the "test,test,test" line should be gone):
-```bash
-tail -5 data/CC_GENERAL.csv
-```
-
-Commit the reverted state:
-```bash
 git add data/CC_GENERAL.csv.dvc
-git commit -m "Reverted to V1 dataset"
+git commit -m "Reverted CC_GENERAL to V1"
 git push origin main
+```
+
+---
+
+## 5. Dataset 2 — Titanic Passenger Data (TITANIC.csv)
+
+Download the Titanic dataset from [Kaggle](https://www.kaggle.com/datasets/brendan45774/test-file), place it in the `data/` folder and rename it to `TITANIC.csv`.
+
+### Track & Push V1
+```bash
+dvc add data/TITANIC.csv
+git add data/.gitignore data/TITANIC.csv.dvc
+git commit -m "Add Titanic dataset tracked with DVC - V1"
+git push origin main
+dvc push
+```
+
+### Add FamilySize Feature & Push V2
+A new feature `FamilySize` is added as `SibSp + Parch + 1`:
+
+```bash
+/opt/anaconda3/bin/python3 -c "
+import pandas as pd
+df = pd.read_csv('data/TITANIC.csv')
+df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
+df.to_csv('data/TITANIC.csv', index=False)
+print(df.head())
+"
+```
+
+```bash
+dvc add data/TITANIC.csv
+git add data/TITANIC.csv.dvc
+git commit -m "Added FamilySize feature to Titanic dataset v2"
+git push origin main
+dvc push
+```
+
+### Revert to V1
+```bash
+git log --oneline  # find the V1 Titanic commit hash
+git checkout cd53095 -- data/TITANIC.csv.dvc
+dvc checkout
+git add data/TITANIC.csv.dvc
+git commit -m "Reverted Titanic dataset to V1"
+git push origin main
+```
+
+Verify revert (FamilySize column should be gone):
+```bash
+/opt/anaconda3/bin/python3 -c "
+import pandas as pd
+df = pd.read_csv('data/TITANIC.csv')
+print(df.columns.tolist())
+"
 ```
 
 ---
@@ -140,10 +180,11 @@ git push origin main
 ## Project Structure
 ```
 DATA_DVC_LAB1/
-├── .dvc/               # DVC metadata and config
+├── .dvc/                       # DVC metadata and config
 ├── data/
-│   ├── .gitignore      # Ensures raw data is not pushed to Git
-│   └── CC_GENERAL.csv.dvc  # DVC tracking file for the dataset
+│   ├── .gitignore              # Ensures raw data is not pushed to Git
+│   ├── CC_GENERAL.csv.dvc      # DVC tracking file for credit card dataset
+│   └── TITANIC.csv.dvc         # DVC tracking file for Titanic dataset
 ├── .gitignore
 ├── README.md
 └── requirements.txt
@@ -152,6 +193,6 @@ DATA_DVC_LAB1/
 ---
 
 ## Notes
-- The actual dataset (`CC_GENERAL.csv`) is **not** stored in Git — it is managed by DVC and stored in GCS.
-- Each version of the dataset is stored as a separate object in GCS under `files/md5/`.
+- Raw datasets (`CC_GENERAL.csv`, `TITANIC.csv`) are **not** stored in Git — managed by DVC and stored in GCS.
+- Each version of each dataset is stored as a separate object in GCS under `files/md5/`.
 - To pull the latest data from GCS on a fresh clone: `dvc pull`
