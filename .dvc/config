@@ -1,0 +1,5 @@
+[core]
+    remote = myremote
+['remote "myremote"']
+    url = gs://shloka-dvc-lab1
+    credentialpath = ../dvc-lab1-key.json
