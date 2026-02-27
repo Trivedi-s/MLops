@@ -1,0 +1,6 @@
+DVC_Lab/
+*.dvcignore
+*.json
+otto/
+Lab2 extra/
+.DS_Store
