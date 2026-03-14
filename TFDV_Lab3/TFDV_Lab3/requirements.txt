@@ -1,0 +1,11 @@
+numpy==1.24.3
+tensorflow==2.15.0
+tensorflow-data-validation==1.15.1
+tensorflow-metadata==1.15.0
+tfx-bsl==1.15.1
+apache-beam==2.53.0
+pandas==1.5.3
+pyarrow==10.0.1
+joblib
+pyfarmhash
+absl-py
