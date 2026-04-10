@@ -15,7 +15,9 @@ This lab demonstrates how to automate a machine learning workflow using GitHub A
 3. Automate the process of training and saving a model using GitHub Actions.
 4. Use Google Cloud Storage (GCS) to store your trained machine learning model.
 
-## Project StructureMLOps/
+## Project Structure
+```
+MLOps/
 ├── .github/
 │   └── workflows/
 │       └── run.yaml              ← GitHub Actions workflow (executed by GitHub)
@@ -25,6 +27,7 @@ This lab demonstrates how to automate a machine learning workflow using GitHub A
 │   ├── requirements.txt
 │   ├── train_and_save_model.py
 │   └── README.md
+```
 
 ## Setup
 
