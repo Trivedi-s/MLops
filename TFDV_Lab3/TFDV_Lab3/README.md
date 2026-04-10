@@ -73,3 +73,15 @@ The notebook follows the same section headings as the original lab:
 3. Restart runtime/session when prompted.
 4. Run all cells top-to-bottom.
 5. Verify schema is saved at `output/schema.pbtxt`.
+
+## Why HTML Export Is Included
+
+GitHub may not render interactive TFDV visualizations from `.ipynb` outputs consistently.
+To make results easier to review, I included an HTML export of the notebook.
+
+### How to View Rendered Output
+1. Download `Adult_Income_TFDV.html` from this repo.
+2. Open it locally in a browser (Chrome/Safari/Firefox).
+3. This shows the notebook content and captured outputs in a static, review-friendly format.
+
+> Note: Some TFDV plots are interactive widgets and may still be best viewed by opening the notebook in Colab.
